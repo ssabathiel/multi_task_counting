@@ -1,0 +1,17 @@
+Specifications about the running schedule 
+ 
+Run 0
+{'Task list': ['count_all_events_1', 'count_all_events_2'],
+'Maximum number of countable objects': 9,
+'Number of epochs': 400,
+'Initial learning rate': 0.01,}
+ 
+Specifications about the Neural Network Architecture 
+ 
+LangConvLSTMCell(
+  (Gates): Linear(in_features=14, out_features=60, bias=True)
+  (fc1): Linear(in_features=15, out_features=7, bias=True)
+  (fc2): Linear(in_features=15, out_features=10, bias=True)
+  (fc3): Linear(in_features=15, out_features=1, bias=True)
+  (fc4): Linear(in_features=15, out_features=1, bias=True)
+)
