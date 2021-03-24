@@ -18,6 +18,8 @@ The main components of the code are the interactive environment, the implementat
 
 run the notebook: /src/notebooks/demonstrate_solving_algorithms.ipynb    --- e.g. on google-colab
 
+**<img src="https://github.com/mythody/DRL/blob/main/remote/whished_result.png" style="height:500px" />**
+
 
 ### Train a NN model on the counting environment
 
