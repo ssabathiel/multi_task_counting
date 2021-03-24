@@ -1,5 +1,5 @@
 ##########################################
-###### SUPERVISED LEARNING - BATCH SIZE - BATCH SIZE
+###### SUPERVISED LEARNING
 #####################################
 #########################
 ################
@@ -8,177 +8,89 @@
 ##########
 #########
 ########
-#######
-######
-#####
-####
-###
-##
-#
 
 
-print("Load training process..")
+
+print("Load training process....!!!")
 
 def train_model(task_list=["touch_all_objects"], n_squares_ = 1, num_epochs = 2000, episode = 0, run_n = 0, model=None):
+
+    directory_path_models = model.model_path + "Models/"
+    if(not os.path.exists(directory_path_models) ):
+      os.mkdir(directory_path_models)  
   
-    model.train()  
-    """
-    Run some basic tests on the API
-    """
-    
-    #lr = 5e-1
-    optimizer = torch.optim.Adam(model.parameters(), lr = model.lr)
-    #optimizer = torch.optim.SGD(model.parameters(), lr = model.lr)
-    #optimizer = torch.optim.Adagrad(model.parameters(), lr = model.lr)
-    
-    max_epoch = num_epochs  # number of epochs
-    test_every_n = 200
+    model.train()   
+    optimizer = torch.optim.Adam(model.parameters(), lr = model.lr) 
 
     torch.manual_seed(0)
     loss_fn = nn.MSELoss()
-    #loss_fn = nn.BCELoss()
-    #loss_fn = nn.NLLLoss()
-    #loss_fn = nn.CrossEntropyLoss()
-    #loss_fn = nn.softmax_cross_entropy_with_logits()
     
-    
-    #mode_ = "target_space"
-    #n_squares_ = random.randint(1,n_squares_)
-    env = CountEnv(task_ = task_list[0], mode= "pick_square", n_squares = n_squares_, display = "None", save_epoch = True )
+    max_epoch = num_epochs 
+    test_every_n = 200    
+    test_every_n_initial = 100
+    test_every_after = test_every_n
+    test_rate_changes_after = 100
+    update_rate = 0
+
+    env = CountEnv(task = task_list[0], n_squares = n_squares_, display = "None", save_epoch = True )
     env.sample_task = True
     env.rand_n_squares=True
-    env.task_list = task_list
-    #env.n_squares_max_list[1] = 2    
+    env.task_list = task_list 
+    episode = model.episode
     
-    batch_size = 9*len(task_list)
-    
+    batch_size = 2*len(task_list)    
     average_loss = 0
-    
-    
-    #env_img_list, env_action_list, ind_list, _, env_task_list = create_batch(env, 1)
-    #print("env_action_list: ", env_action_list)
-    
-    #################################
-    ###### TRAIN
-    ###########################
-    print('Run for', max_epoch, 'iterations')
+    old_average_loss = 5000000
 
     
+    ## Initial Test before training   
+    test_env_on_every_task_and_N(env, model, episode, run_n, average_loss, test_every_n)
+           
+    ### Create Dataset
+    data_set = create_data_set(env, 500)
+    
+    
+    
     #################################
-    ## Initial Test before training
-    ##############################
-    episode = model.episode
-    for task in env.task_list:
-          for n_ in range(1, env.n_squares_max+1):
-              env.task = task
-              env.rand_n_squares = False
-              env.sample_task = False
-              env.reset()
-              env.n_squares_wished = n_
-              n_test_runs = 20
-              if(env.task == "count_on"):
-                n_test_runs = 1
-                for addy in range(1,env.n_squares_max-n_+1):
-                  env.add_n = addy
-                  success_number, n_one_to_one_correspondences, n_right_number_order, variabilities = test_model(env, model, n_test_runs)
-                  model.result_tensory.add_episode_result(task, n_, episode, success_number/n_test_runs, run_n,n_one_to_one=n_one_to_one_correspondences, n_right_number_words=n_right_number_order,variabilities=variabilities)
-                  model.result_tensory.add_loss(average_loss/test_every_n, episode)
-                print("")
-              else:
-                success_number, n_one_to_one_correspondences, n_right_number_order, variabilities = test_model(env, model, n_test_runs)
-                model.result_tensory.add_episode_result(task, n_, episode, success_number/n_test_runs, run_n,n_one_to_one=n_one_to_one_correspondences, n_right_number_words=n_right_number_order,variabilities=variabilities)
-                model.result_tensory.add_loss(average_loss/test_every_n, episode)
-              
-    env.rand_n_squares = True
-    env.sample_task = True
-    env.n_squares_wished = -1
-    old_average_loss = 5000000
-    #env.n_squares_wished = env.n_squares
+    ###### TRAINING LOOP
+    ###########################
     
-    
-    
-       
-    
+    start_time = time.time()
+    print("--- %s seconds ---" % (round(time.time() - start_time,2) ))
+    print('Run for', max_epoch, 'iterations')
     
     for epoch in range(0, max_epoch):
           episode = model.episode
           model.episode = model.episode + 1
+          if(epoch<=test_rate_changes_after+1):
+            test_every_n = test_every_n_initial
+          else:
+            test_every_n = test_every_after          
           
-          #model.lr = max(1e-2,model.lr)
-          #if(epoch==3000):
-          #    lr = 1e-3
-          state_network = None
-          
-          
+          state_network = None          
           env.reset()
+          loss = 0
           
-          '''
-          if(env.task=="touch_all_objects"):
-              touch_all_objects(env)
-              
-          if(env.task=="count_all_objects"):
-              count_all_objects(env)     
-              
-          if(env.task=="move_all_squares_from_source_to_target"):
-              move_all_squares_from_source_to_target(env)
-          '''   
-          
-          #env_img_list, env_action_list, ind_list, _, env_task_list = create_batch(env, 1)
-          #print("env_action_list: ", env_action_list)
-          
-          
-          ###################################
-
+          # Draw batch of espisodes from prepaired dataset
+          env_img_list, env_action_list, ind_list, _, env_task_list = get_batch_from_data_set(data_set, batch_size)
+                    
           state_network_vis = None
           state_network_lang = None
-
-          env_img_list, env_action_list, ind_list, _, env_task_list = create_batch(env, batch_size)
           input_lang = torch.zeros( (batch_size, env.n_words+1) ).view(batch_size, env.n_words+1)
           
-          loss = 0
-
           ##########################
-          
-
-          
+          ###### EPISODE LOOP
+                   
           for t in range(0, len(env_img_list)):
              
-              if(CUDA_bool==False): 
-                 state_network_vis, output_action, state_network_lang, output_lang = model(env_img_list[t],state_network_vis, input_lang, state_network_lang, env_task_list) 
-              else:
-                 state_network_vis, output_action, state_network_lang, output_lang = model(env_img_list[t].cuda(),state_network_vis, input_lang.cuda(), state_network_lang, env_task_list.cuda())
-              
+              state_network_vis, output_action, state_network_lang, output_lang = model(env_img_list[t],state_network_vis, input_lang, state_network_lang, env_task_list) 
+             
               Q_values = torch.cat((output_action, output_lang),1)
               
-              if(CUDA_bool==False): 
-                 #loss += loss_fn(env_action_list[t], Q_values )
-                 #loss += loss_fn(Q_values, torch.max(env_action_list[t], 1)[1] )
-                 loss += loss_fn(Q_values, env_action_list[t] )
-                  
-                 #loss += loss_fn(env_action_list[t], torch.max(Q_values, 1)[1] ) 
-                 #loss += own_cross_entropy(env_action_list[t], Q_values)
-                 #_, labels = torch.max(Q_values, 1)
-                 #loss += loss_fn(env_action_list[t], labels) 
-                 #loss += cross_entropy_one_hot(env_action_list[t], Q_values)
-                 #     _, labels = target.max(dim=1)
-                 #return nn.CrossEntropyLoss()(input, labels)
-              else:
-                 loss += loss_fn(env_action_list[t].cuda(), Q_values)
-              #if(epoch==0):
-              #  print("env_action_list[t]: ", env_action_list[t])
-              #  print("Q_values ", Q_values)
+              loss += loss_fn(Q_values, env_action_list[t] )
 
               input_lang = copy(output_lang)
               input_lang = env_action_list[t][:,-env.n_words-1:]
-
-              
-              #print(Q_values.size() )
-              #print(env_action_list[t].size())
-              #print("state_network[0].size(): ", state_network[0].size())
-              #print("state_network[0][ind_list[t]].size(): ", state_network[0][ind_list[t]].size())
-              #print(ind_list[t])
-              #state_network[0] = state_network[0][ind_list[t]]
-              #state_network[1] = state_network[1][ind_list[t]]
               
               state_network_vis[0] = state_network_vis[0][ind_list[t]] #.detach()   #if you want to retain graph/LSTM-cell
               state_network_vis[1] = state_network_vis[1][ind_list[t]] #.detach()
@@ -188,148 +100,76 @@ def train_model(task_list=["touch_all_objects"], n_squares_ = 1, num_epochs = 20
               
               input_lang = input_lang[ind_list[t]]
               env_task_list = env_task_list[ind_list[t]]
-          
-              #if((t+1)%20==0 or t==(max_epoch-1) ):
-              #print(' > Epoch {:2d} loss: {:.3f}'.format((epoch+1), loss.data) )
+               
               
-              if( (t+1)%1000==0):
-                 model.zero_grad()
-                  
-                 loss.backward(retain_graph=True)
-                 optimizer.step()
-              
-          average_loss += loss.data
-
-          # zero grad parameters
+          average_loss += loss.data.numpy()
+          model_before_update = copy(model)
           model.zero_grad()
-          # compute new grad parameters through time!
           loss.backward()
+          torch.nn.utils.clip_grad_value_(model.parameters(), clip_value=1.0)
           optimizer.step()
-          # learning_rate step against the gradient
-          #for p in model.parameters():
-          #p.data.sub_(p.grad.data * lr)
-              
- 
+          
+          
+          if((epoch+1)%1000==0):
+
+            file_name = str(model.episode)  
+            PATH = directory_path_models + file_name
+            torch.save(model.state_dict(), PATH)
+            
           early_criteria = (epoch+1) < 201 and (epoch+1)%20==0  
           if((epoch+1)%test_every_n==0):
               print("Episode: ", epoch+1)
               print("Learning rate: ", get_lr(optimizer))
               print("Average Loss in past ", test_every_n, " runs: ", average_loss/test_every_n)
-          
-              '''
-              env.sample_task = False
-              with ThreadPoolExecutor(max_workers=2) as executor:
-              for task in env.task_list:
-                  env.task = task
-                  env.reset()
-                  success_number = executor.submit(test_model, env, n_test_runs = 50)
-                  success_number_list_count_events.append(success_number/50.)
-              '''
+              print("Update-rate: ", update_rate/test_every_n)              
+              print("--- %s seconds ---" % (round(time.time() - start_time,2) ))
               
-              for task in env.task_list:
-                  print(" ")
-                  #if(model.model_path != ""):
-                  #  all_text_path = model.model_path + "GIFs_and_ACTIONS/actions.txt"
-                  #  whole_text = "\n" + "Episode " + str(model.episode) + "\n"
-                  #  fily = open(all_text_path,"a+")
-                  #  fily.write(whole_text)
-                  #  fily.close()
-                  
-                  for n_ in range(1, env.n_squares_max+1):
-                      env.task = task
-                      env.rand_n_squares = False
-                      env.sample_task = False
-                      env.reset()
-                      env.n_squares_wished = n_
-                      n_test_runs = 20
-                      
-                      
-                      if(env.task == "count_on"):
-                        n_test_runs = 1
-                        for addy in range(1,env.n_squares_max-n_+1):
-                          env.add_n = addy
-                          success_number, n_one_to_one_correspondences, n_right_number_order, variabilities = test_model(env, model, n_test_runs)
-                          model.result_tensory.add_episode_result(task, n_, episode, success_number/n_test_runs, run_n,n_one_to_one=n_one_to_one_correspondences, n_right_number_words=n_right_number_order,variabilities=variabilities)
-                          model.result_tensory.add_loss(average_loss/test_every_n, episode) 
-                        print("")
-                      
-                      else:
-                        success_number, n_one_to_one_correspondences, n_right_number_order, variabilities = test_model(env, model, n_test_runs)
-                        model.result_tensory.add_episode_result(task, n_, episode, success_number/n_test_runs, run_n, n_one_to_one=n_one_to_one_correspondences, n_right_number_words=n_right_number_order, variabilities=variabilities)
-                        model.result_tensory.add_loss((average_loss/test_every_n).numpy(), episode)
-                      
-                      # Save GIF and ACTION-sequence:
-                      
-                      if(model.model_path != ""):
-                        env.reset()
-                        env.n_squares_wished = n_
-                        n_test_runs = 20
-                        directory_path = model.model_path + "GIFs_and_ACTIONS/"+ str(model.episode) + "/"
-                        #if(not os.path.exists(directory_path) ):
-                        #os.mkdir(directory_path)
-                        file_name = "__" + env.task + "__" + str(env.n_squares_wished)
-                        pathy = directory_path + file_name
-                        
-                        
-                        #demonstrate_model(env,model, PATH = pathy)
-                      
-
-              env.rand_n_squares = True
-              env.sample_task = True
-              env.n_squares_wished = -1
-              '''
-              with ThreadPoolExecutor(max_workers=25) as executor:
-                  for task in env.task_list:
-                      print(" ")
-                      for n_ in range(1, env.n_squares_max+1):
-                          env.task = task
-                          env.rand_n_squares = False
-                          env.sample_task = False
-                          env.reset()
-                          env.n_squares_wished = n_
-                          success_number = executor.submit(test_model_and_write, env, n_test_runs = 50)
-                                        
-              '''
-
+              test_env_on_every_task_and_N(env, model, episode, run_n, average_loss, test_every_n)
               
               print("---------------------------------------")
-              '''
-              if(average_loss/test_every_n > old_average_loss*0.95 ):
-                print("updating learning rate...")
-                #model.lr = 0.2 #0.95
-                if(model.lr>0.00001):
-                  model.lr *= 0.5
-              old_average_loss = average_loss/test_every_n
-              '''
+              print("--- %s seconds ---" % (round(time.time() - start_time,2) ))
 
-              
-              if(average_loss/test_every_n < 0.2):
-                  #model.lr = 0.2 #0.95
-                  model.lr = model.lr #0.05
+                            
+              ## Modify this if you want to have an changing learning rate: dependent on current learning rate or depending on the current loss
+              if(average_loss/test_every_n < 0.1):
+                  model.lr = 0.005 #model.lr #0.001 #0.05
                   #pass
-                  '''
-                  if(model.lr>0.00001):
-                  	#model.lr = 0.05 #0.9
-                  	pass
-                  '''
               for g in optimizer.param_groups:
                   g['lr'] = model.lr
-                  #pass
-              
-              
-              #average_loss_list.append(1.0*average_loss/test_every_n)
-              #episode_list.append(episode+epoch)
-              
+                  #pass              
               average_loss = 0
               
+
+def test_env_on_every_task_and_N(env, model, episode, run_n, average_loss, test_every_n):              
+      for task in env.task_list:
+          print(" ")
+          for n_ in range(1, env.n_squares_max+1):
+            env.task = task
+            env.rand_n_squares = False
+            env.sample_task = False
+            env.n_squares_wished = n_
+            env.reset()
+
+            n_test_runs = 20                      
+
+            if(env.task == "count_on"):
+              n_test_runs = 1
+              for addy in range(1,env.n_squares_max-n_+1):
+                env.add_n = addy
+                success_number, n_one_to_one_correspondences, n_right_number_order, variabilities = test_model(env, model, n_test_runs)
+                model.result_tensory.add_episode_result(task, n_, episode, success_number/n_test_runs, run_n,n_one_to_one=n_one_to_one_correspondences, n_right_number_words=n_right_number_order,variabilities=variabilities)
+                model.result_tensory.add_loss(average_loss/test_every_n, episode) 
+                print("")
+
+            else:
+              success_number, n_one_to_one_correspondences, n_right_number_order, variabilities = test_model(env, model, n_test_runs)
+              model.result_tensory.add_episode_result(task, n_, episode, success_number/n_test_runs, run_n, n_one_to_one=n_one_to_one_correspondences, n_right_number_words=n_right_number_order, variabilities=variabilities)
+              model.result_tensory.add_loss((average_loss/test_every_n), episode)              
           
-         
-task_setup = {
-    'task': "touch_all_objects",
-    'max_dist': 10,
-    'n_squares': 1,
-    'num_epochs': 600
-}
+      env.rand_n_squares = True
+      env.sample_task = True
+      env.n_squares_wished = -1
+              
 
 def get_lr(optimizer):
     for param_group in optimizer.param_groups:
@@ -344,10 +184,7 @@ def own_cross_entropy(inputy, target):
   logsoftmax = nn.LogSoftmax()
   return torch.mean(torch.sum(-target * logsoftmax(inputy), dim=1))
   
-  
-#train_model(task=["count_all_objects"], n_squares_ = 4, num_epochs = 2500, episode = episode) 
-#train_model(task="move_all_squares_from_source_to_target", max_dist_ = 15, n_squares_ = 3, num_epochs = 200)
-#train_model(task="pick_next_object", max_dist_ = 10, n_squares_ = 2, num_epochs = 2000) 
+
    
 
              

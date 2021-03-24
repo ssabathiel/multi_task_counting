@@ -130,9 +130,11 @@ def create_task_vector(env):
     task_vector[env.task_n] = 1
     object_vector[env.object_n] = 1
     quant_vector[env.quant_n] = 1
+    if(env.quant_n_2 > -1):
+      quant_vector[env.quant_n_2] = 1
     
     
-    stacked_vector = torch.cat([task_vector, object_vector, quant_vector])
+    stacked_vector = torch.cat([task_vector, quant_vector, object_vector])
     return stacked_vector
 
 
@@ -271,6 +273,91 @@ class result_tensor():
             
         return df
 
+class DataSet():
+  def __init__(self, epochs, task_vector_list):
+    self.epochs = epochs
+    self.task_vector_list = task_vector_list
+
+def create_data_set(env, set_size):
+    epochs = []
+    env_task_list = []
+    for n in range(set_size):
+      env.reset()
+      #print(env.task, env.n_squares)
+      #if(env.task=="recite_n"):
+      #print("--- in Creating batch: should be only 1 if recite_n")
+      #print("env.task: ", env.task)
+      #print("env.n_squares: ", env.n_squares)
+      env.solve_task()
+      #print("after solved task")
+
+      task_vector = torch.zeros(env.task_vector_length)
+      task_vector[env.task_n] = 1              
+      task_vector = create_task_vector(env)
+
+      env_task_list.append(task_vector)
+      epochs.append(env.epoch)
+
+    data_set = DataSet(epochs, env_task_list)
+
+    return data_set
+
+
+
+def get_batch_from_data_set(data_set, batch_size):
+
+    env_img_list = []    # each list item represents one time instance, which contains a whole batch
+    env_action_list = []
+    env_relation_list = []
+    n_list = []
+    env_task_list = []
+
+    list1 = range(len(data_set.epochs))
+    indicess = random.sample(list1, batch_size)
+    #####
+    #env_epochs = random.sample(data_set.epochs, batch_size)
+    env_epochs = [data_set.epochs[i] for i in indicess]
+    env_task_list = [data_set.task_vector_list[i] for i in indicess]
+
+    for n in range(batch_size):
+        env_epoch = env_epochs[n]
+    
+        for t in range(0, len(env_epoch) ): #(len(env.epoch)-1)
+            stacked_img_coord = env_epoch[t]['img']            
+            if(t>=len(env_img_list) ):
+                env_img_list.append(stacked_img_coord)
+                env_action_list.append(env_epoch[t]['action'])          
+                n_list.append( np.array(n) )
+            else:
+                env_img_list[t] = torch.cat([env_img_list[t],  stacked_img_coord])
+                env_action_list[t] = torch.cat([env_action_list[t],  env_epoch[t]['action']])
+                n_list[t] = np.append( n_list[t], n )
+    # Dummy last entry: won't be needed in training, since after last step state_network not updated anymore
+    n_list.append( np.array(n) )
+    
+    # Create index_list: list of indices which entry in batch are to be kept from one time step to the next
+    current_ind_list = np.arange(batch_size)
+    ind_list = []       
+    for t in range(len(n_list) - 1 ):
+        first_n = True
+        for n_ in np.ndenumerate(n_list[t+1]):
+            n = n_[1]
+            appendy = np.where(n_list[t]==n)  
+            if type(appendy) is tuple:
+                appendy=appendy[0]
+            if(first_n):
+                ind_list.append( appendy  )
+                first_n = False
+            else:
+                ind_list[t] = np.append(ind_list[t],  appendy  )
+    
+    for t in range(len(ind_list)):
+          ind_list[t] =  torch.from_numpy( ind_list[t] ) 
+    
+    env_task_list = torch.stack(env_task_list)
+       
+    return  env_img_list, env_action_list, ind_list, env_relation_list, env_task_list
+
 
 
 def create_batch(env, batch_size):
@@ -287,19 +374,16 @@ def create_batch(env, batch_size):
 
     for n in range(batch_size):
         env.reset()
-        env.solve_task()
-
         
+        env.solve_task()
 
         task_vector = torch.zeros(task_vector_size)
         task_vector[env.task_n] = 1
-        
-        
+                
         task_vector = create_task_vector(env)
         env_task_list.append(task_vector)
       
-
-        for t in range(0, len(env.epoch)-1 ):
+        for t in range(0, len(env.epoch) ): #(len(env.epoch)-1)
             
 
             #stacked_img_coord = add_task_layer(env.epoch[t]['img'], env.img_size, env.task_n)

@@ -36,7 +36,7 @@ class run():
         return dicty
 
 def run_training_schedule(run_list, model):
-    #drive.mount('/content/drive')
+    drive.mount('/content/drive')
     
     #Run sequentially on same model
     for n in range(len(run_list)):
@@ -54,9 +54,9 @@ def average_multiple_schedules(n_replications, run_list,initial_model_path=None)
 
 
     c = 2           # Input size
-    d = 1           # Hidden size
+    d = 5           # Hidden size
     lr_dummy = 0.1
-    env = CountEnv(mode="pick_square", max_dist = 10, n_squares = 9, display = "game", save_epoch = True )
+    env = CountEnv(n_squares = 9, display = "game", save_epoch = True )
     
     model = LangConvLSTMCell(c,d,env,lr_dummy)
     from_pretrained = False
@@ -88,8 +88,8 @@ def average_multiple_schedules(n_replications, run_list,initial_model_path=None)
         ind_time_1 = time.time()
         
         #directory_path, file_name = create_path(df, model, extra_folder)
-        #model.model_path = "/content/drive/My Drive/Embodied_counting/Results/" + extra_folder + str(n) + "_"
-        model.model_path = RESULTS_PATH + extra_folder + str(n) + "_"
+        model.model_path = "/content/drive/My Drive/Embodied_counting/Results/" + extra_folder + str(n) + "_"
+        
         df, model = run_training_schedule(run_list, model)
         ind_time_2 = time.time()
         diff_time = ind_time_2 - ind_time_1

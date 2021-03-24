@@ -8,7 +8,6 @@ def demonstrate_model(env, model, PATH=None, display_=False, display_network_act
   
       #print("in demonstrate..")   
       model.training = False
-      model.test_mode = True
       state_network = None
 
       env.rand_n_squares = False
@@ -140,7 +139,7 @@ def demonstrate_model(env, model, PATH=None, display_=False, display_network_act
           if(display_):
             
             img_input = env.observationImg.convert('RGB')
-            img_memory = Image.fromarray(state_network_vis[0][0][0].detach().numpy()*255).resize( (400,400)).convert('RGB')
+            img_memory = Image.fromarray(state_network_vis[0][0][0].detach().numpy()*255).resize( (400,400), resample=0).convert('RGB')
             
             imgs = get_concat_h(img_input, img_memory)
             
@@ -171,18 +170,15 @@ def demonstrate_model(env, model, PATH=None, display_=False, display_network_act
             #hidden_img = network_array_to_image(hidden, img_width=45)
             border_width = 5
             border_color = 'red'
-            hidden_font_path = SOURCE_PATH + "Arial.ttf"
-            hidden_font = ImageFont.truetype(hidden_font_path, 30)
             
             img_2D_size = 200
             img_2D_size_hidden = 100
             img_1D_size = 22
             img_1D_size_small = 15
             
-            visual_input = env.observationImg.resize( (img_2D_size,img_2D_size)).convert('RGB')
+            visual_input = env.observationImg.resize( (img_2D_size,img_2D_size), resample=0).convert('RGB')
             visual_input = ImageOps.expand(visual_input, border=border_width, fill = border_color)
-            
-            hidden_font = ImageFont.truetype(hidden_font_path, 30)
+            hidden_font = ImageFont.truetype("/content/drive/My Drive/Embodied_counting/src/Arial.ttf", 30)
             layer_description_img = Image.new('RGB', (visual_input.width, visual_input.width//6), color='white')
             draw = ImageDraw.Draw(layer_description_img)
             wordy = "Visual Input"
@@ -199,14 +195,14 @@ def demonstrate_model(env, model, PATH=None, display_=False, display_network_act
             task_image_small = network_array_to_image(array_=task_vector_,node_names_list=node_names_list, layer_description=layer_description, img_width=img_1D_size_small)
 
             # Cell images 
-            
+            hidden_font = ImageFont.truetype("/content/drive/My Drive/Embodied_counting/src/Arial.ttf", 30)
             hidden_color = (200,200,250)
 
             n_hidden_layer = state_network_vis[0][0].detach().numpy().shape[0]
-            cell_img = Image.fromarray(state_network_vis[0][0][0].detach().numpy()*255).resize( (img_2D_size_hidden,img_2D_size_hidden)).convert('RGB')
+            cell_img = Image.fromarray(state_network_vis[0][0][0].detach().numpy()*255).resize( (img_2D_size_hidden,img_2D_size_hidden), resample=0).convert('RGB')
             cell_img = ImageOps.expand(cell_img, border=border_width, fill = border_color)
             for i in range(1,n_hidden_layer):
-                next_cell_img = Image.fromarray(state_network_vis[0][0][i].detach().numpy()*255).resize( (img_2D_size_hidden,img_2D_size_hidden)).convert('RGB')
+                next_cell_img = Image.fromarray(state_network_vis[0][0][i].detach().numpy()*255).resize( (img_2D_size_hidden,img_2D_size_hidden), resample=0).convert('RGB')
                 next_cell_img = ImageOps.expand(next_cell_img, border=border_width, fill = border_color)
                 cell_img = get_concat_h(cell_img, next_cell_img, distance = 50, colory=hidden_color)
 
@@ -223,10 +219,10 @@ def demonstrate_model(env, model, PATH=None, display_=False, display_network_act
             # Hidden images 
 
             n_hidden_layer = state_network_vis[1][0].detach().numpy().shape[0]
-            hidden_img = Image.fromarray(state_network_vis[1][0][0].detach().numpy()*255).resize( (img_2D_size_hidden,img_2D_size_hidden)).convert('RGB')
+            hidden_img = Image.fromarray(state_network_vis[1][0][0].detach().numpy()*255).resize( (img_2D_size_hidden,img_2D_size_hidden), resample=0).convert('RGB')
             hidden_img = ImageOps.expand(hidden_img, border=border_width, fill = border_color)
             for i in range(1,n_hidden_layer):
-                next_cell_img = Image.fromarray(state_network_vis[1][0][i].detach().numpy()*255).resize( (img_2D_size_hidden,img_2D_size_hidden)).convert('RGB')
+                next_cell_img = Image.fromarray(state_network_vis[1][0][i].detach().numpy()*255).resize( (img_2D_size_hidden,img_2D_size_hidden), resample=0).convert('RGB')
                 next_cell_img = ImageOps.expand(next_cell_img, border=border_width, fill = border_color)
                 hidden_img = get_concat_h(hidden_img, next_cell_img, distance = 50, colory=hidden_color)
 
@@ -297,7 +293,7 @@ def demonstrate_model(env, model, PATH=None, display_=False, display_network_act
             whole_img = get_concat_v(whole_img, action_output, distance = 50)
 
 
-            big_font = ImageFont.truetype(hidden_font_path, 40)
+            big_font = ImageFont.truetype("/content/drive/My Drive/Embodied_counting/src/Arial.ttf", 40)
             big_description_img = Image.new('RGB', (whole_img.width, visual_input.width//4), color='white')
             draw = ImageDraw.Draw(big_description_img)
             wordy = node_names_list[env.task_n] + " " + node_names_list[10 + env.quant_n] + " "+ node_names_list[5 + env.object_n]  
@@ -353,7 +349,6 @@ def demonstrate_model(env, model, PATH=None, display_=False, display_network_act
         sum_of_squared_f_is += f_is[i]*f_is[i]
       
       variability = 1-np.sqrt(sum_of_squared_f_is)
-      model.test_mode = False
       #print("Variability: ", variability)
       
       if(PATH is not None):
@@ -382,7 +377,7 @@ def save_gif(env, PATH, display = False):
     for t in range(0, len(env.epoch) ):
 
             old_size = 800
-            img = env.epoch[t]['dem_img'].resize( (old_size,old_size) ).convert('RGB')
+            img = env.epoch[t]['dem_img'].resize( (old_size,old_size) , resample=0).convert('RGB')
 
             old_im = img
             new_im = background
@@ -492,7 +487,7 @@ def network_array_to_image(array_,node_names_list=None, layer_description=None, 
 
       img_width = array_size*img_width
       img_height = img_width//array_size
-      img = Image.fromarray(double_array_*255).resize( (img_width,img_height)).convert('RGB') 
+      img = Image.fromarray(double_array_*255).resize( (img_width,img_height), resample=0).convert('RGB') 
 
       boundary_color = (0,0,255)
       boundary_width = 4
@@ -505,10 +500,9 @@ def network_array_to_image(array_,node_names_list=None, layer_description=None, 
       img = ImageOps.expand(img, border=border_width, fill = boundary_color)
 
       text_img = Image.new('RGB', (img.width, 3*img.height), color='white')
-    
-      hidden_font_path = SOURCE_PATH + "Arial.ttf"  
-      task_font = ImageFont.truetype(hidden_font_path, 20)
-      node_font = ImageFont.truetype(hidden_font_path, 12)
+
+      task_font = ImageFont.truetype("/content/drive/My Drive/Embodied_counting/src/Arial.ttf", 20)
+      node_font = ImageFont.truetype("/content/drive/My Drive/Embodied_counting/src/Arial.ttf", 12)
 
 
       #node_names_list = ["Touch", "Recite", "Count", "Give","Nothing","1", "2","3", "4","5", "6","7", "8","9", "ALL","Objects", "Events","-", "-", "-"]

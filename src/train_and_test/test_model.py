@@ -13,10 +13,14 @@ def test_model(env, model, n_test_runs = 10):
       n_right_number_order = 0
       variabilities = 0.0
       task_vector_size = 5
-    
       model.test_mode = True
+      model.draw_graphy = False
       
       
+      
+      #start_time = time.time()
+      #print("--- %s seconds ---" % (round(time.time() - start_time,2) ))
+
       for n in range(n_test_runs):
       
           #env = CountEnv(mode="target_space", max_dist = 10, n_squares = 1, display = "None", save_epoch = True )
@@ -45,17 +49,26 @@ def test_model(env, model, n_test_runs = 10):
               #if(n==0):
               #    env.display = "Game"
               t += 1
+              #print("--- %s Start ---" % (round(time.time() - start_time,5) ))
+              #start_time = time.time()
 
               image, action = envImageAndActionToPytorchFormat(env)
               #stacked_img_coord = add_task_layer(image, env.img_size, env.task_n)
               #stacked_img_coord = add_task_layer(image, env.img_size, env)
               stacked_img_coord = image
               
+              #print("--- %s Got observation ---" % (round(time.time() - start_time,5) ))
+              #start_time = time.time()
+
               if(CUDA_bool==False): 
                  state_network_vis, output_action, state_network_lang, output_lang = model(stacked_img_coord,state_network_vis, input_lang, state_network_lang, task_vector)
+                 #state_network_vis, output_action, state_network_lang, output_lang = model(stacked_img_coord,state_network_vis, input_lang, state_network_lang, task_vector)
+                 #state_network_vis, output_action, state_network_lang, output_lang = model(stacked_img_coord,state_network_vis, input_lang, state_network_lang, task_vector)
+
               else:
                   state_network_vis, output_action, state_network_lang, output_lang = model(stacked_img_coord.cuda(),state_network_vis, input_lang.cuda(), state_network_lang, task_vector.cuda())
-
+              #print("--- %s Ran through model ---" % (round(time.time() - start_time,5) ))
+              #start_time = time.time()
               #print("###########################")
               #print("whole action: ", torch.cat((output_action, output_lang),1))
               #print("output_lang.detach().numpy(): ", output_lang.detach().numpy() )
@@ -83,6 +96,8 @@ def test_model(env, model, n_test_runs = 10):
               #print("Action[word]: ", Action[word])
               #print("c: ", c)
               env.triple_update(int(a),Is_a, int(word+env.n_motor_actions), c )
+              #print("--- %s Updated model ---" % (round(time.time() - start_time,5) ))
+              #start_time = time.time()
               #print("c: ", c)
               #c = True
               #input_lang = torch.zeros( env.n_words+1 ) #.view(1, env.n_words+1)
@@ -105,11 +120,15 @@ def test_model(env, model, n_test_runs = 10):
               if(c):
                  a_is.append(word)
               
-              
-              
+              #print("Action: ", Action[word+env.n_motor_actions])
+              #print("env.ended: ", env.ended)
+              #print("env.task: ", env.task)
               if(env.ended):
                   n_successful_runs += 1
-          
+
+              #print("--- %s end of n ---" % (round(time.time() - start_time,5) ))
+              #start_time = time.time()
+
           if(env.one_to_one_correspondence==True):
              n_one_to_one_correspondences += 1
           if(env.right_number_order==True):
@@ -141,7 +160,7 @@ def test_model(env, model, n_test_runs = 10):
         print(env.task, " ", "/ n =", env.n_squares, " :", n_spaces , n_successful_runs, " / ", n_test_runs, " test runs successful // 1-1: ", n_one_to_one_correspondences, " / ", n_test_runs, "Number order: ", n_right_number_order, " / ", n_test_runs)
       
       model.test_mode = False
-    
+      
       return n_successful_runs, n_one_to_one_correspondences/n_test_runs, n_right_number_order/n_test_runs, variabilities/n_test_runs
 
     
@@ -150,5 +169,59 @@ def test_model_and_write(env, n_test_runs = 10):
     result_tensory.add_episode_result(task, n_, episode, success_number)
     
     
+def test_model_with_loss(env, model, data_set, loss_fn, n_test_runs = 10):
+    
+      model.eval()
+
+      n_successful_runs = 0
+      model.test_mode = True
+      model.draw_graphy = False
+
+      summed_loss = 0
+
+      for n in range(n_test_runs):
+  
+          state_network = None       
+          
+          ###################################
+
+          state_network_vis = None
+          state_network_lang = None
+
+          # Create batch everytime from scratch
+          #env_img_list, env_action_list, ind_list, _, env_task_list = create_batch(env, batch_size)
+
+          # Draw batch from prepaired dataset
+          env_img_list, env_action_list, ind_list, _, env_task_list = get_batch_from_data_set(data_set, 1)
+
+          input_lang = torch.zeros( (1, env.n_words+1) ).view(1, env.n_words+1)
+          
+          loss = 0
+          
+          for t in range(0, len(env_img_list)):             
+              if(CUDA_bool==False): 
+                 state_network_vis, output_action, state_network_lang, output_lang = model(env_img_list[t],state_network_vis, input_lang, state_network_lang, env_task_list) 
+              else:
+                 state_network_vis, output_action, state_network_lang, output_lang = model(env_img_list[t].cuda(),state_network_vis, input_lang.cuda(), state_network_lang, env_task_list.cuda())
+              
+              Q_values = torch.cat((output_action, output_lang),1)              
+              loss += loss_fn(Q_values, env_action_list[t] )
+              input_lang = copy(output_lang)
+              input_lang = env_action_list[t][:,-env.n_words-1:]
+              
+              state_network_vis[0] = state_network_vis[0][ind_list[t]] #.detach()   #if you want to retain graph/LSTM-cell
+              state_network_vis[1] = state_network_vis[1][ind_list[t]] #.detach()
+              
+              state_network_lang[0] = state_network_lang[0][ind_list[t]] #.detach()
+              state_network_lang[1] = state_network_lang[1][ind_list[t]] #.detach()
+              
+              input_lang = input_lang[ind_list[t]]
+              env_task_list = env_task_list[ind_list[t]]
+
+          summed_loss+=loss
+
+      model.test_mode = False
+      
+      return summed_loss
     
     

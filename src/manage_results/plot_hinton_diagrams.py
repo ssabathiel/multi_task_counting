@@ -2,7 +2,7 @@
 ## Try weight-node matrix
 #################################
 
-print("Load Hinton-diagrams...!")
+print("Load Hinton-diagrams...!!")
 
 
 
@@ -50,13 +50,13 @@ print("Load Hinton-diagrams...!")
 
 
 
-def hinton(matrix,axis=None, figy=None, input_nodes=None,input_node_description="",output_nodes=None,output_names=None, max_weight=None, ax=None, weight_encoding='size', graphy=None):
+def hinton(matrix,axis=None, figy=None, input_nodes=None,input_node_description="",output_nodes=None,output_names=None, max_weight=None, ax=None, weight_encoding='size', graphy=None, input_node_names=None):
     """Draw Hinton diagram for visualizing a weight matrix."""
     #ax = ax if ax is not None else plt.gca()
     
     
     
-    scale_fig=0.5
+    scale_fig=0.7
     fig_sizy=(matrix.shape[0]*scale_fig,matrix.shape[1]*scale_fig)
     fig, ax = plt.subplots(figsize=fig_sizy)
     
@@ -101,7 +101,9 @@ def hinton(matrix,axis=None, figy=None, input_nodes=None,input_node_description=
             rect = plt.Rectangle([x - size / 2, -dist_to_weights-size/2], size, size,
                              facecolor=color, edgecolor=color)
             ax.add_patch(rect)
-            
+            if(input_node_names is not None):
+              ax.text(x - size / 2, -dist_to_weights-size/2, str(input_node_names[x]),fontsize=12)
+
     for (x, y), w in np.ndenumerate(matrix):
         #print(x,y)
 #         if(weight_encoding=='size'):
@@ -133,6 +135,7 @@ def hinton(matrix,axis=None, figy=None, input_nodes=None,input_node_description=
     
     # Add representation description
     text_dist = 1
+    dist_to_weights = 1
     text_rect = plt.Rectangle([matrix.shape[0]/2-2, -text_dist-dist_to_weights-size-2], 1, 0.1, facecolor='gray', edgecolor='gray')
     ax.add_patch(text_rect)
     ax.text(matrix.shape[0]/2-7.0, -text_dist-dist_to_weights-size, input_node_description, fontsize=18)

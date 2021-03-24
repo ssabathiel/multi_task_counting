@@ -336,6 +336,7 @@ def plot_transfer_effect(df_continual, df_single):
 def plot_accuracies(df,xmin=0):
     task_list_ = pd.unique(df.task.values)
     task_list_length = len(task_list_)
+    fig_2, ax_2 = plt.subplots(figsize=(16,6) )
 
     if(task_list_length == 1): 
         fig, ax = plt.subplots(figsize=(16,6) )
@@ -353,10 +354,10 @@ def plot_accuracies(df,xmin=0):
             plot_accuracies_multiple_tasks_one_plot(df, fig=fig, ax=ax)
         #plot_accuracies_multiple_tasks(df)
         #plot_accuracies_single_task(df)
-    return fig
+    return fig, fig_2
 
 def save_and_plot(df, model=None, run_time=None, extra_folder=""):
-    #drive.mount('/content/drive')
+    drive.mount('/content/drive')
 
     #Create Basic Path
     directory_path, file_name = create_path(df, model, extra_folder)
@@ -378,11 +379,14 @@ def save_and_plot(df, model=None, run_time=None, extra_folder=""):
         fily.close()
 
     #Plot accuracies
-    fig = plot_accuracies(df)
+    fig, fig2 = plot_accuracies(df)
 
     #Save images    
     PATH = directory_path + file_name + ".png"
     fig.savefig(PATH, dpi=400)
+    
+    PATH = directory_path + "sub_task_stages.png"
+    fig2.savefig(PATH, dpi=400)
 
 
 def plot_and_save_transfer_effect(df_continual, df_single):
@@ -396,20 +400,18 @@ def plot_and_save_transfer_effect(df_continual, df_single):
     extra_folder = "TRANSFER_"
     extra_folder += create_extra_folder_for_transfer(task_1[0], task_2[0], n_replications, create=False)
     #directory_path, file_name = create_path(df, extra_folder=extra_folder)
-    #directory_path = "/content/drive/My Drive/Embodied_counting/Results/" + extra_folder
-    directory_path = RESULTS_PATH + extra_folder
+    directory_path = "/content/drive/My Drive/Embodied_counting/Results/" + extra_folder
     os.mkdir(directory_path)
     file_name = extra_folder[:-1]
     #Save
-    #drive.mount('/content/drive')
+    drive.mount('/content/drive')
     PATH = directory_path + file_name + ".png"
     fig.savefig(PATH, dpi=400)
     #fig.save(PATH)
 
 def save_schedule_specifications(run_list, model, extra_folder):
 
-    #directory_path = "/content/drive/My Drive/Embodied_counting/Results/" + extra_folder
-    directory_path = RESULTS_PATH + extra_folder
+    directory_path = "/content/drive/My Drive/Embodied_counting/Results/" + extra_folder
     #os.mkdir(directory_path)
     PATH = directory_path + "schedule_specifications.txt"
 
@@ -462,7 +464,7 @@ def average_dfs(run_dfs):
 
 
 def create_extra_folder(run_list, n_runs,from_pretrained=False):
-    #drive.mount('/content/drive')
+    drive.mount('/content/drive')
     folder_id = np.random.randint(1,10000)
     extra_folder = ""
     for r in run_list:
@@ -473,8 +475,7 @@ def create_extra_folder(run_list, n_runs,from_pretrained=False):
     if(from_pretrained):
       	extra_folder += "_from_pretrained_"
     extra_folder += str(n_runs) + "_TIMES__" + str(folder_id) + "/"
-    #directory_path = "/content/drive/My Drive/Embodied_counting/Results/" + extra_folder
-    directory_path = RESULTS_PATH + extra_folder
+    directory_path = "/content/drive/My Drive/Embodied_counting/Results/" + extra_folder
     os.mkdir(directory_path)
     
     #Create Extra-folder for gifs and action-list:
@@ -484,7 +485,7 @@ def create_extra_folder(run_list, n_runs,from_pretrained=False):
     return extra_folder
 
 def create_extra_folder_for_transfer(task1, task2, n_replications, create=True):
-    #drive.mount('/content/drive')
+    drive.mount('/content/drive')
     folder_id = np.random.randint(1,10000)
     extra_folder = ""
     extra_folder += str(task1)
@@ -492,15 +493,14 @@ def create_extra_folder_for_transfer(task1, task2, n_replications, create=True):
     extra_folder += str(task2)
 
     extra_folder += "__" + str(n_replications) + "_TIMES__" + str(folder_id) + "/"
-    #directory_path = "/content/drive/My Drive/Embodied_counting/Results/" + extra_folder
-    directory_path = RESULTS_PATH + extra_folder
+    directory_path = "/content/drive/My Drive/Embodied_counting/Results/" + extra_folder
     if(create==True):
         os.mkdir(directory_path)
 
     return extra_folder
 
 def create_path(df, model=None, extra_folder = ""):
-    #drive.mount('/content/drive')
+    drive.mount('/content/drive')
     # Get task string
     task_string = ""
     if(len(pd.unique(df.task.values))>1 ):
@@ -519,8 +519,7 @@ def create_path(df, model=None, extra_folder = ""):
 
 
     # Create full path
-    #directory_path = "/content/drive/My Drive/Embodied_counting/Results/" + extra_folder
-    directory_path = RESULTS_PATH + extra_folder
+    directory_path = "/content/drive/My Drive/Embodied_counting/Results/" + extra_folder
     #os.mkdir(directory_path)
     file_name = task_string + n_string + date 
 
